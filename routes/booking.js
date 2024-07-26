@@ -1,101 +1,83 @@
 const express = require("express");
 const router = express.Router();
-const { rooms, bookings } = require("../data/data");
 
-// 1. Create a Room
+let rooms = [];
+let bookings = [];
+
+// Endpoint to create a room
 router.post("/rooms", (req, res) => {
-
-     console.log("POST /rooms called");
-     console.log("Request body:", req.body);
-  const { roomName, seats, amenities, pricePerHour } = req.body;
-  const newRoom = {
+  const { name, seats, amenities, pricePerHour } = req.body;
+  const room = {
     id: rooms.length + 1,
-    roomName,
+    name,
     seats,
     amenities,
     pricePerHour,
+    bookings: [],
   };
-  rooms.push(newRoom);
-  res.status(201).json({ message: "Room created successfully", room: newRoom });
+  rooms.push(room);
+  res.status(201).send(room);
 });
 
-// 2. Book a Room
+// Endpoint to list all rooms with booked data
+router.get("/rooms", (req, res) => {
+  res.send(rooms);
+});
+
+// Endpoint to book a room
 router.post("/bookings", (req, res) => {
   const { customerName, date, startTime, endTime, roomId } = req.body;
-  const room = rooms.find((r) => r.id === roomId);
 
+  const room = rooms.find((r) => r.id === roomId);
   if (!room) {
-    return res.status(404).json({ message: "Room not found" });
+    return res.status(404).send({ message: "Room not found" });
   }
 
-  const isBooked = bookings.some(
+  // Check for existing bookings
+  const existingBooking = room.bookings.find(
     (b) =>
-      b.roomId === roomId &&
       b.date === date &&
-      ((b.startTime <= startTime && b.endTime > startTime) ||
-        (b.startTime < endTime && b.endTime >= endTime) ||
-        (b.startTime >= startTime && b.endTime <= endTime))
+      ((startTime >= b.startTime && startTime < b.endTime) ||
+        (endTime > b.startTime && endTime <= b.endTime))
   );
-
-  if (isBooked) {
+  if (existingBooking) {
     return res
       .status(400)
-      .json({ message: "Room is already booked for the specified time" });
+      .send({ message: "Room is already booked for the given time" });
   }
 
-  const newBooking = {
+  const booking = {
     id: bookings.length + 1,
     customerName,
     date,
     startTime,
     endTime,
     roomId,
-    bookingDate: new Date(),
-    status: "Booked",
   };
-  bookings.push(newBooking);
-  res
-    .status(201)
-    .json({ message: "Room booked successfully", booking: newBooking });
+  room.bookings.push(booking);
+  bookings.push(booking);
+  res.status(201).send(booking);
 });
 
-// 3. List all Rooms with Booked Data
-router.get("/rooms", (req, res) => {
-  const roomsWithBookings = rooms.map((room) => {
-    const roomBookings = bookings.filter((b) => b.roomId === room.id);
-    return { ...room, bookings: roomBookings };
-  });
-  res.json(roomsWithBookings);
-});
-
-// 4. List all Customers with Booked Data
+// Endpoint to list all customers with booked data
 router.get("/customers", (req, res) => {
-  const customers = bookings.map((booking) => ({
-    customerName: booking.customerName,
-    roomName: rooms.find((r) => r.id === booking.roomId).roomName,
-    date: booking.date,
-    startTime: booking.startTime,
-    endTime: booking.endTime,
-  }));
-  res.json(customers);
+  const customerBookings = bookings.map((b) => {
+    const room = rooms.find((r) => r.id === b.roomId);
+    return { ...b, roomName: room.name };
+  });
+  res.send(customerBookings);
 });
 
-// 5. List how many times a customer has booked the room
-router.get("/customers/:customerName", (req, res) => {
+// Endpoint to list how many times a customer has booked a room
+router.get("/customers/:customerName/bookings", (req, res) => {
   const { customerName } = req.params;
   const customerBookings = bookings
     .filter((b) => b.customerName === customerName)
-    .map((booking) => ({
-      roomName: rooms.find((r) => r.id === booking.roomId).roomName,
-      date: booking.date,
-      startTime: booking.startTime,
-      endTime: booking.endTime,
-      bookingId: booking.id,
-      bookingDate: booking.bookingDate,
-      status: booking.status,
-    }));
-
-  res.json({ customerName, bookings: customerBookings });
+    .map((b) => {
+      const room = rooms.find((r) => r.id === b.roomId);
+      return { ...b, roomName: room.name };
+    });
+  res.send({ customerName, bookings: customerBookings });
 });
 
 module.exports = router;

@@ -2,11 +2,17 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const bookingRoutes = require("./routes/booking");
 
-const app = express();
-app.use(bodyParser.json());
-app.use("/api", bookingRoutes);
+const httpServer = express();
+httpServer.use(bodyParser.json());
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+const port = process.env.PORT || 3000;
+
+// Import routes
+
+
+// Use routes
+httpServer.use("/", bookingRoutes);
+
+httpServer.listen(port,"localhost", () => {
+  console.log(`Server is running on port ${port}`);
 });
