@@ -13,6 +13,6 @@ const port = process.env.PORT || 3000;
 // Use routes
 httpServer.use("/", bookingRoutes);
 
-httpServer.listen(port,"localhost", () => {
+httpServer.listen(port,"0.0.0.0", () => {
   console.log(`Server is running on port ${port}`);
 });
